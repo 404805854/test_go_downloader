@@ -173,7 +173,7 @@ func (d *Downloader) PathExists(path string) (bool, error) {
 }
 
 func (d *Downloader) getPartFilename(strURL, outputpath string, partNum int) string {
-	return fmt.Sprintf("%s/%s-%d", outputpath, path.Base(strURL), partNum)
+	return fmt.Sprintf("%s-%d", path.Join(outputpath, path.Base(strURL)), partNum)
 }
 
 func (d *Downloader) singleDownload(strURL, outputpath string, silence bool) error {
@@ -187,7 +187,7 @@ func (d *Downloader) singleDownload(strURL, outputpath string, silence bool) err
 		d.setBar(int(resp.ContentLength))
 	}
 
-	f, err := os.OpenFile(outputpath, os.O_CREATE|os.O_WRONLY, 0666)
+	f, err := os.OpenFile(path.Join(outputpath, path.Base(strURL)), os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
 		return err
 	}
