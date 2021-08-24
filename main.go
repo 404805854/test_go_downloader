@@ -146,6 +146,9 @@ func main() {
 			} else {
 				wg.Add(len(URLs))
 			}
+			if len(URLs) > 1 {
+				silence = true
+			}
 
 			for _, strURL := range URLs {
 				go func(strURL, outputpath string, concurrency int, resume, silence bool) {
