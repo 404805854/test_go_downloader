@@ -7,11 +7,54 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 
 	"github.com/urfave/cli/v2"
 	"mvdan.cc/xurls/v2"
 )
+
+func removeDuplication_map(arr []string) []string {
+	set := make(map[string]struct{}, len(arr))
+
+	j := 0
+	for _, v := range arr {
+		_, ok := set[v]
+		if ok {
+			continue
+		}
+		set[v] = struct{}{}
+		arr[j] = v
+		j++
+	}
+
+	return arr[:j]
+}
+
+func removeDuplication_sort(arr []string) []string {
+	sort.Strings(arr)
+
+	length := len(arr)
+	if length == 0 {
+		return arr
+	}
+
+	j := 0
+	for i := 1; i < length; i++ {
+		if arr[i] != arr[j] {
+			j++
+			if j < i {
+				swap(arr, i, j)
+			}
+		}
+	}
+
+	return arr[:j+1]
+}
+
+func swap(arr []string, a, b int) {
+	arr[a], arr[b] = arr[b], arr[a]
+}
 
 func main() {
 	// 默认并发数
@@ -92,6 +135,8 @@ func main() {
 			rxStrict := xurls.Strict()
 
 			URLs := rxStrict.FindAllString(content, -1)
+			sort.Strings(URLs)
+			removeDuplication_sort(URLs)
 
 			for _, strURL := range URLs {
 				if public && !strings.HasPrefix(strURL, "https://") {
@@ -103,7 +148,7 @@ func main() {
 					log.Fatal(err)
 					return err
 				}
-				content = strings.Replace(content, strURL, filename, 1)
+				content = strings.Replace(content, strURL, filename, -1)
 				fmt.Println()
 			}
 			fmt.Println(content)
