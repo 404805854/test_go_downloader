@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/urfave/cli/v2"
 	"mvdan.cc/xurls/v2"
@@ -135,20 +136,36 @@ func main() {
 			rxStrict := xurls.Strict()
 
 			URLs := removeDuplication_sort(rxStrict.FindAllString(content, -1))
+			process_threads := concurrency / len(URLs)
+			if process_threads == 0 {
+				process_threads = 1
+			}
+			var wg sync.WaitGroup
+			if concurrency < len(URLs)/process_threads {
+				wg.Add(concurrency)
+			} else {
+				wg.Add(len(URLs))
+			}
 
 			for _, strURL := range URLs {
-				if public && !strings.HasPrefix(strURL, "https://") {
-					continue
-				}
-				filename := path.Join(outputpath, strings.Split(path.Base(strURL), ".")[0])
-				err := NewDownloader(concurrency, resume).Download(strURL, filename, silence)
-				if err != nil {
-					log.Fatal(err)
-					return err
-				}
-				content = strings.Replace(content, strURL, filename, -1)
-				fmt.Println()
+				go func(strURL, outputpath string, concurrency int, resume, silence bool) {
+					defer wg.Done()
+
+					if public && !strings.HasPrefix(strURL, "https://") {
+						return
+					}
+					filename := path.Join(outputpath, strings.Split(path.Base(strURL), ".")[0])
+					err := NewDownloader(concurrency, resume).Download(strURL, filename, silence)
+					if err != nil {
+						log.Fatal(err)
+						return
+					}
+					content = strings.Replace(content, strURL, filename, -1)
+					fmt.Println()
+				}(strURL, outputpath, process_threads, resume, silence)
 			}
+
+			wg.Wait()
 			fmt.Println(content)
 			return nil
 		},
