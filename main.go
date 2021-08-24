@@ -163,7 +163,7 @@ func main() {
 						log.Fatal(err)
 						return
 					}
-					content = strings.Replace(content, strURL, filename+path.Base(strURL), -1)
+					content = strings.Replace(content, strURL, path.Join(outputpath, path.Base(strURL)), -1)
 					fmt.Println()
 				}(strURL, outputpath, process_threads, resume, silence)
 			}
