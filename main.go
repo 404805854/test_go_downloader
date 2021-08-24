@@ -57,6 +57,57 @@ func swap(arr []string, a, b int) {
 	arr[a], arr[b] = arr[b], arr[a]
 }
 
+func download_sync(content, strURL, outputpath string, concurrency int, public, resume, silence bool) string {
+	if !strings.HasSuffix(outputpath, "/") {
+		if strings.Contains(path.Base(outputpath), ".") {
+			outputpath, _ = filepath.Split(outputpath)
+			if outputpath == "" {
+				outputpath = "./"
+			}
+		}
+	}
+
+	rxStrict := xurls.Strict()
+
+	URLs := removeDuplication_sort(rxStrict.FindAllString(content, -1))
+	process_threads := concurrency / len(URLs)
+	if process_threads == 0 {
+		process_threads = 1
+	}
+	var wg sync.WaitGroup
+	if concurrency < len(URLs)/process_threads {
+		wg.Add(concurrency)
+	} else {
+		wg.Add(len(URLs))
+	}
+	if len(URLs) > 1 {
+		silence = true
+	}
+
+	for _, strURL := range URLs {
+		go func(strURL, outputpath string, concurrency int, resume, silence bool) {
+			defer wg.Done()
+
+			if public && !strings.HasPrefix(strURL, "https://") {
+				return
+			}
+			filename := path.Join(outputpath, strings.Split(path.Base(strURL), ".")[0])
+			err := NewDownloader(concurrency, resume).Download(strURL, filename, silence)
+			if err != nil {
+				log.Fatal(err)
+				return
+			}
+			content = strings.Replace(content, strURL, path.Join(filename, path.Base(strURL)), -1)
+			if !silence {
+				fmt.Println()
+			}
+		}(strURL, outputpath, process_threads, resume, silence)
+	}
+
+	wg.Wait()
+	return content
+}
+
 func main() {
 	// 默认并发数
 	concurrencyN := runtime.NumCPU()
@@ -124,54 +175,7 @@ func main() {
 			if strURL != "" {
 				content = strURL
 			}
-			if !strings.HasSuffix(outputpath, "/") {
-				if strings.Contains(path.Base(outputpath), ".") {
-					outputpath, _ = filepath.Split(outputpath)
-					if outputpath == "" {
-						outputpath = "./"
-					}
-				}
-			}
-
-			rxStrict := xurls.Strict()
-
-			URLs := removeDuplication_sort(rxStrict.FindAllString(content, -1))
-			process_threads := concurrency / len(URLs)
-			if process_threads == 0 {
-				process_threads = 1
-			}
-			var wg sync.WaitGroup
-			if concurrency < len(URLs)/process_threads {
-				wg.Add(concurrency)
-			} else {
-				wg.Add(len(URLs))
-			}
-			if len(URLs) > 1 {
-				silence = true
-			}
-
-			for _, strURL := range URLs {
-				go func(strURL, outputpath string, concurrency int, resume, silence bool) {
-					defer wg.Done()
-
-					if public && !strings.HasPrefix(strURL, "https://") {
-						return
-					}
-					filename := path.Join(outputpath, strings.Split(path.Base(strURL), ".")[0])
-					err := NewDownloader(concurrency, resume).Download(strURL, filename, silence)
-					if err != nil {
-						log.Fatal(err)
-						return
-					}
-					content = strings.Replace(content, strURL, path.Join(filename, path.Base(strURL)), -1)
-					if !silence {
-						fmt.Println()
-					}
-				}(strURL, outputpath, process_threads, resume, silence)
-			}
-
-			wg.Wait()
-			fmt.Println(content)
+			fmt.Println(download_sync(content, strURL, outputpath, concurrency, public, resume, silence))
 			return nil
 		},
 	}
