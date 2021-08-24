@@ -164,7 +164,9 @@ func main() {
 						return
 					}
 					content = strings.Replace(content, strURL, path.Join(outputpath, path.Base(strURL)), -1)
-					fmt.Println()
+					if !silence {
+						fmt.Println()
+					}
 				}(strURL, outputpath, process_threads, resume, silence)
 			}
 
