@@ -134,9 +134,7 @@ func main() {
 
 			rxStrict := xurls.Strict()
 
-			URLs := rxStrict.FindAllString(content, -1)
-			sort.Strings(URLs)
-			removeDuplication_sort(URLs)
+			URLs := removeDuplication_sort(rxStrict.FindAllString(content, -1)）
 
 			for _, strURL := range URLs {
 				if public && !strings.HasPrefix(strURL, "https://") {
